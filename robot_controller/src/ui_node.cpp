@@ -15,41 +15,26 @@ class InputController : public rclcpp::Node{
             intermediate_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/intermediate_vel", 10);
             
             //SUBSCRIBERS
-            reverse_state_sub_ = this->create_subscription<std_msgs::msg::Int32>("/is_reversing", 10, std::bind(&InputController::reverse_state_callback, this, _1));
 
             //VARIABLES
             stop_vel.linear.x = 0.0;
             stop_vel.angular.z = 0.0;
             vel_input.linear.x = 0.0;
             vel_input.angular.z = 0.0;
-            moved_turtle.data=0.0;
             is_moving = false;
-            is_reversing = false;
         }
         
         private:
 
-            void reverse_state_callback(const std_msgs::msg::Int32::SharedPtr msg){
-                int i = msg->data;
-                if(i!=0){
-                    is_reversing=true;
-                    input_timer_.reset();
-                }else{
-                    is_reversing=false;
-                    this->start();
-                }
-            }
-
             void stop_turtles(){
                 intermediate_vel_pub_->publish(stop_vel);
-                id_turtle_managed_pub_->publish(moved_turtle);
                 is_moving = false;
                 stop_timer_.reset();
                 this->start();
             }
 
             void start(){
-                if(!input_timer_ && !is_reversing){
+                if(!input_timer_){
                     input_timer_ = this->create_wall_timer(
                         std::chrono::milliseconds(1000), 
                         std::bind(&InputController::input_timer_callback, this));        
@@ -58,15 +43,10 @@ class InputController : public rclcpp::Node{
 
             void input_timer_callback(){
                 if(is_moving){
-                    return;              //block if is moving
+                    return;        
                 }
-                if(is_reversing){        //block if coming back
-                    return;
-                }
-
                 double linear, angular;
-                std::cout<< "Which turtle do you want to move?\n1) Turtle 1\n2) Turtle 2\n:";
-
+                
                 std::cout<< "Linear Velocity:";
                 if (!(std::cin >> linear)) {
                     std::cout << "Invalid input for Linear Velocity.\n";
@@ -106,12 +86,10 @@ class InputController : public rclcpp::Node{
             rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr intermediate_vel_pub_;
 
             //SUBSCRIBERS
-            rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr reverse_state_sub_;
 
             //VARIABLES
             geometry_msgs::msg::Twist vel_input;
             geometry_msgs::msg::Twist stop_vel;
-            bool is_reversing;
             bool is_moving;
         
 };
