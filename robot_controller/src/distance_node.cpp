@@ -22,58 +22,64 @@ class DistanceController: public rclcpp::Node{
             scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>("/scan", 10, std::bind(&DistanceController::scan_callback, this, _1));
             
             //VARIABLES
-            vel_input.linear.x = 0.0;
-            vel_input.angular.z = 0.0;
-            threshold = 2.0;
-            is_reversing = false;
+            threshold = 0.8;
+            is_reversing.data = false;
         }
     private:
 
-        bool robot_in_danger(){ 
-            for(int i=0; i<scan_ranges ; i++){
-                if(msg->ranges[i] < threshold){
-                    is_reversing=true;
-                    reverse_state_pub_->publish(is_reversing);
-                    vel_input.linear.x = -(msg->linear.x);
-                    vel_input.angular.z = -(msg->angular.z);
-                    robot_vel_pub->publish(vel_input);
-                }
+        geometry_msgs::msg::Twist check_direction_robot(){
+            geometry_msgs::msg::Twist reverse_robot_vel;
+            if(vel_input.linear.x < 0){
+                reverse_robot_vel.linear.x = 1;
+            }else{
+                reverse_robot_vel.linear.x = -1;
             }
+            if(vel_input.angular.z != 0){
+                reverse_robot_vel.angular.z = -vel_input.angular.z;
+            }
+            return reverse_robot_vel;
         }
 
         void scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg){
+     
             scan_ranges = msg->ranges.size();
-            scan_angle_min = msg->angle_min;
-            scan_angle_max = msg->angle_max;
-            scan_angle_increment = msg->angle_increment;
-
-            if(robot_in_danger)
-
-            is_reversing = false;
+            float min_dist = msg->range_max;
 
             for(int i=0; i<scan_ranges ; i++){
-                if(msg->ranges[i] < threshold){
-                    is_reversing=true;
-                    reverse_state_pub_->publish(is_reversing);
-                    vel_input.linear.x = -(msg->linear.x);
-                    vel_input.angular.z = -(msg->angular.z);
-                    robot_vel_pub->publish(vel_input);
-                }
+                
+                float scan_distance = msg->ranges[i];
+                if (!std::isnan(scan_distance) && !std::isinf(scan_distance)){
+                    min_dist = std::min(min_dist,scan_distance);
+                }   
             }
 
-            reverse_state_pub_->publish(is_reversing);
+            if(min_dist > threshold){
+                is_reversing.data = false;
+            }else{
+                is_reversing.data = true;
+                reverse_state_pub_->publish(is_reversing);
 
+                geometry_msgs::msg::Twist reverse_cmd;
+                reverse_cmd = check_direction_robot();
+                robot_vel_pub->publish(reverse_cmd);
+
+            }
+
+            if(is_reversing.data && ){
+                robot_vel_pub->publish(stop_robot);
+                reverse_state_pub_->publish(is_reversing);
+            }
         }
+
         void robot_pose_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg){
-            robot_pose.pose.position.x = msg->pose.position.x;
-            robot_pose.pose.position.y = msg->pose.position.y;
-            robot_pose.pose.position.z = msg->pose.position.z;
+            current_robot_pose.pose.position.x = msg->pose.position.x;
+            current_robot_pose.pose.position.y = msg->pose.position.y;
         }
 
         void intermediate_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg){
             vel_input.linear.x = msg->linear.x;
             vel_input.angular.z = msg->angular.z;
-            if(!is_reversing) {
+            if(!is_reversing.data) {
                 robot_vel_pub->publish(vel_input);
             }
         }
@@ -90,16 +96,12 @@ class DistanceController: public rclcpp::Node{
         rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
         
         //VARIABLES
+        geometry_msgs::msg::PoseStamped current_robot_pose;
+        geometry_msgs::msg::Twist stop_robot;
         geometry_msgs::msg::Twist vel_input;
-        geometry_msgs::msg::PoseStamped robot_pose;
-        float32 threshold;
-        float32 scan_angle_min; 
-        float32 scan_angle_max; 
-        float32 scan_angle_increment; 
-        float32 scan_time_increment; 
-        float32 scan_angle_min; 
-        float32 scan_ranges;
-        bool is_reversing;
+        std_msgs::msg::Bool is_reversing;
+        float threshold;
+        int scan_ranges;
         
 };
 

@@ -14,12 +14,13 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED) 
 find_package(geometry_msgs REQUIRED) 
 find_package(std_msgs REQUIRED) 
+find_package(sensor_msgs REQUIRED) 
 
 add_executable(ui src/ui_node.cpp)  
 add_executable(distance src/distance_node.cpp) 
 
-ament_target_dependencies(ui rclcpp geometry_msgs std_msgs)
-ament_target_dependencies(distance rclcpp geometry_msgs std_msgs)
+ament_target_dependencies(ui rclcpp geometry_msgs std_msgs sensor_msgs)
+ament_target_dependencies(distance rclcpp geometry_msgs std_msgs sensor_msgs)
 
 
 install(TARGETS 
