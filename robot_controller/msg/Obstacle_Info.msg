@@ -1,0 +1,3 @@
+float32 dist_close_obst
+string direction
+float32 threshold
