@@ -88,7 +88,7 @@ class InputController : public rclcpp::Node{
                 input_timer_.reset();
 
                 stop_timer_ = this->create_wall_timer(
-                    std::chrono::milliseconds(1000), 
+                    std::chrono::milliseconds(3000), 
                     std::bind(&InputController::stop_turtles, this)
                 );
 

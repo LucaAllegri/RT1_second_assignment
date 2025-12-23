@@ -22,10 +22,20 @@ class DistanceController: public rclcpp::Node{
             scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>("/scan", 10, std::bind(&DistanceController::scan_callback, this, _1));
             
             //VARIABLES
+            
             threshold = 0.8;
+            min_dist=10.0;
             is_reversing.data = false;
         }
     private:
+
+        bool robot_in_danger(){
+            if (min_dist > threshold){
+                return false;
+            }else{
+                return true;
+            }
+        }
 
         geometry_msgs::msg::Twist check_direction_robot(){
             geometry_msgs::msg::Twist reverse_robot_vel;
@@ -43,7 +53,7 @@ class DistanceController: public rclcpp::Node{
         void scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg){
      
             scan_ranges = msg->ranges.size();
-            float min_dist = msg->range_max;
+            min_dist = msg->range_max;
 
             for(int i=0; i<scan_ranges ; i++){
                 
@@ -53,21 +63,21 @@ class DistanceController: public rclcpp::Node{
                 }   
             }
 
-            if(min_dist > threshold){
-                is_reversing.data = false;
+            if(robot_in_danger()){
+                if(!is_reversing.data){
+                    is_reversing.data = true;
+                    reverse_state_pub_->publish(is_reversing);
+
+                    geometry_msgs::msg::Twist reverse_cmd;
+                    reverse_cmd = check_direction_robot();
+                    robot_vel_pub->publish(reverse_cmd);
+                }
             }else{
-                is_reversing.data = true;
-                reverse_state_pub_->publish(is_reversing);
-
-                geometry_msgs::msg::Twist reverse_cmd;
-                reverse_cmd = check_direction_robot();
-                robot_vel_pub->publish(reverse_cmd);
-
-            }
-
-            if(is_reversing.data && ){
-                robot_vel_pub->publish(stop_robot);
-                reverse_state_pub_->publish(is_reversing);
+                if(is_reversing.data){
+                    is_reversing.data = false;
+                    robot_vel_pub->publish(stop_robot);
+                    reverse_state_pub_->publish(is_reversing);
+                }
             }
         }
 
@@ -102,6 +112,7 @@ class DistanceController: public rclcpp::Node{
         std_msgs::msg::Bool is_reversing;
         float threshold;
         int scan_ranges;
+        float min_dist;
         
 };
 
