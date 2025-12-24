@@ -17,7 +17,7 @@ def generate_launch_description():
         )
     )
     
-
+    #UI NODE
     input_controller_node = Node(
         package='robot_controller',
         executable='ui',
@@ -35,8 +35,17 @@ def generate_launch_description():
         prefix='xterm -e'
     )
 
+    #CUSTOM MSGS NODE
+    custom_service_node = Node(
+        package='robot_controller',
+        executable='robot_service',
+        name='robot_service_node',
+        output='screen',
+    )
+
     return LaunchDescription([
         gazebo_launch,
         input_controller_node,
         distance_controller_node,
+        custom_service_node,
     ])
