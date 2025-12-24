@@ -3,6 +3,8 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
 #include "std_msgs/msg/bool.hpp"
+#include "robot_custom_msgs/msg/obstacle_info.hpp"
+#include "robot_custom_msgs/srv/threshold.hpp"
 #include <math.h>
 using std::placeholders::_1;
 

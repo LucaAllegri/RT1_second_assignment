@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(robot_controller)
+project(robot_custom_msgs)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -7,33 +7,19 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
+
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
-find_package(rclcpp REQUIRED) 
-find_package(geometry_msgs REQUIRED) 
-find_package(std_msgs REQUIRED) 
-find_package(sensor_msgs REQUIRED) 
-find_package(robot_custom_msgs REQUIRED)
-
-add_executable(ui src/ui_node.cpp)  
-add_executable(distance src/distance_node.cpp) 
-
-ament_target_dependencies(ui rclcpp geometry_msgs std_msgs sensor_msgs robot_custom_msgs)
-ament_target_dependencies(distance rclcpp geometry_msgs std_msgs sensor_msgs robot_custom_msgs)
-
-
-install(TARGETS 
-  ui
-  distance
-  DESTINATION lib/${PROJECT_NAME}
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/ObstacleInfo.msg"
+  "srv/Threshold.srv"
 )
 
-install( 
-  DIRECTORY launch/
-  DESTINATION share/${PROJECT_NAME}/launch
-)
+ament_export_dependencies(rosidl_default_runtime)
+
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
