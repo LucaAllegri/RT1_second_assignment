@@ -36,7 +36,9 @@ class InputController : public rclcpp::Node{
         private:
 
             void obstacle_info_callback(const robot_custom_msgs::msg::ObstacleInfo::SharedPtr msg){
-                
+                current_custom_msg.min_distance_obstacle = msg->min_distance_obstacle;
+                current_custom_msg.direction = msg->direction;
+                current_custom_msg.threshold = msg->threshold;
             }
 
             void set_threshold(float ts_value){
@@ -136,6 +138,10 @@ class InputController : public rclcpp::Node{
                     std::bind(&InputController::stop_turtles, this)
                 );
 
+                std::cout << "Distance of the closest obstacle:" << current_custom_msg.min_distance_obstacle <<
+                             "\nDirection of the Obstacle:" << current_custom_msg.direction <<
+                             "\nThreshold: " << current_custom_msg.threshold <<std::endl;
+
             } 
 
             //TIMERS
@@ -154,6 +160,7 @@ class InputController : public rclcpp::Node{
 
 
             //VARIABLES
+            robot_custom_msgs::msg::ObstacleInfo current_custom_msg;
             geometry_msgs::msg::Twist vel_input;
             geometry_msgs::msg::Twist stop_vel;
             bool is_reversing;

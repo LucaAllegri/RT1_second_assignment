@@ -32,6 +32,7 @@ class DistanceController: public rclcpp::Node{
             //VARIABLES
             min_dist=10.0;
             is_reversing.data = false;
+            dircetion_obstacle = "right";
 
             //CALLBACK PER UPDATE PARAMETRO 
             param_callback_handle_ = this->add_on_set_parameters_callback( std::bind(&DistanceController::on_param_change,this, std::placeholders::_1));
@@ -87,6 +88,11 @@ class DistanceController: public rclcpp::Node{
                 }   
             }
 
+            msg_obst_info.min_distance_obstacle = min_dist;
+            msg_obst_info.direction = dircetion_obstacle;
+            msg_obst_info.threshold = threshold;
+            custom_msg_pub_->publish(msg_obst_info);
+
             RCLCPP_INFO(this->get_logger(),"Min. Distance: %.2f", min_dist);
 
             if(robot_in_danger()){
@@ -140,10 +146,12 @@ class DistanceController: public rclcpp::Node{
         rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_callback_handle_;
 
         //VARIABLES
+        robot_custom_msgs::msg::ObstacleInfo msg_obst_info;
         geometry_msgs::msg::PoseStamped current_robot_pose;
         geometry_msgs::msg::Twist stop_robot;
         geometry_msgs::msg::Twist vel_input;
         std_msgs::msg::Bool is_reversing;
+        std::string dircetion_obstacle;
         double threshold;
         int scan_ranges;
         float min_dist;

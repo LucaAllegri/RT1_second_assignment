@@ -1,0 +1,3 @@
+float32 min_distance_obstacle
+string direction
+float64 threshold
