@@ -23,12 +23,19 @@ class DistanceController: public rclcpp::Node{
             robot_pose_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>("/goal_pose", 10, std::bind(&DistanceController::robot_pose_callback, this, _1));
             scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>("/scan", 10, std::bind(&DistanceController::scan_callback, this, _1));
             
+            //PARAMETER
+            this->declare_parameter<double>("threshold", 0.8);
+            threshold = this->get_parameter("threshold").as_double();
+            RCLCPP_INFO(this->get_logger(),"Initial threshold: %.2f", threshold);
+
             //VARIABLES
-            
-            threshold = 0.8;
             min_dist=10.0;
             is_reversing.data = false;
+
+            //CALLBACK PER UPDATE PARAMETRO 
+            param_callback_handle_ = this->add_on_set_parameters_callback( std::bind(&DistanceController::on_param_change,this, std::placeholders::_1));
         }
+
     private:
 
         bool robot_in_danger(){
@@ -37,6 +44,20 @@ class DistanceController: public rclcpp::Node{
             }else{
                 return true;
             }
+        }
+
+        // CALLBACK PARAMETRI
+        rcl_interfaces::msg::SetParametersResult on_param_change(const std::vector<rclcpp::Parameter> & params) {
+            for (const auto & param : params) {
+                if (param.get_name() == "threshold") {
+                    threshold = param.as_double();
+                    RCLCPP_INFO(this->get_logger(),
+                                "Threshold updated: %.2f", threshold);
+                }
+            }
+            rcl_interfaces::msg::SetParametersResult result;
+            result.successful = true;
+            return result;
         }
 
         geometry_msgs::msg::Twist check_direction_robot(){
@@ -64,6 +85,8 @@ class DistanceController: public rclcpp::Node{
                     min_dist = std::min(min_dist,scan_distance);
                 }   
             }
+
+            RCLCPP_INFO(this->get_logger(),"Min. Distance: %.2f", min_dist);
 
             if(robot_in_danger()){
                 if(!is_reversing.data){
@@ -97,6 +120,7 @@ class DistanceController: public rclcpp::Node{
         }
 
         //TIMERS
+        rclcpp::TimerBase::SharedPtr threshold_timer_;
 
         //PUBLISHER
         rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr robot_vel_pub;
@@ -107,12 +131,18 @@ class DistanceController: public rclcpp::Node{
         rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr robot_pose_sub_;
         rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
         
+        //SERVICES
+        rclcpp::Client<robot_custom_msgs::srv::Threshold>::SharedPtr threshold_client_;
+
+        //PARAMETER
+        rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_callback_handle_;
+
         //VARIABLES
         geometry_msgs::msg::PoseStamped current_robot_pose;
         geometry_msgs::msg::Twist stop_robot;
         geometry_msgs::msg::Twist vel_input;
         std_msgs::msg::Bool is_reversing;
-        float threshold;
+        double threshold;
         int scan_ranges;
         float min_dist;
         

@@ -32,7 +32,10 @@ def generate_launch_description():
         executable='distance',
         name='distance_node',
         output='screen', 
-        prefix='xterm -e'
+        prefix='xterm -e',
+        parameters=[{
+            'threshold': 0.8
+        }]
     )
 
     #CUSTOM MSGS NODE

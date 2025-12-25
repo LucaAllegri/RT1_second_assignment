@@ -21,7 +21,7 @@ class InputController : public rclcpp::Node{
             reverse_state_sub_ = this->create_subscription<std_msgs::msg::Bool>("/is_reversing", 10, std::bind(&InputController::reverse_state_callback, this, _1));
 
             //SERVICES
-            threshold_client_ = this->create_client<robot_custom_msgs::srv::Threshold>("set_threshold");
+            threshold_client_ = this->create_client<robot_custom_msgs::srv::Threshold>("/set_threshold");
 
             //VARIABLES
             stop_vel.linear.x = 0.0;
@@ -31,26 +31,31 @@ class InputController : public rclcpp::Node{
             is_reversing=false;
             is_moving = false;
         }
-
-        //METHOD TO CALL THERSHOLD SERVICE
-        void set_threshold(float ts_value){
-            auto thershold_request = std::make_shared<robot_custom_msgs::srv::Threshold::Request>();
-
-            while (!threshold_client_->wait_for_service(std::chrono::seconds(1))) {
-                RCLCPP_WARN(this->get_logger(), "Waiting for threshold service...");
-            }
-
-            thershold_request ->threshold = ts_value;
-
-            auto future = threshold_client_->async_send_request(thershold_request);
-
-            if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), future) == rclcpp::FutureReturnCode::SUCCESS){
-                RCLCPP_INFO(this->get_logger(),"Threshold set to %.2f", future.get()->ts);
-            }
-        }
-
         
         private:
+
+            void set_threshold(float ts_value){
+                auto thershold_request = std::make_shared<robot_custom_msgs::srv::Threshold::Request>();
+
+                if (!threshold_client_->wait_for_service(std::chrono::seconds(1))) {
+                    RCLCPP_WARN(this->get_logger(), "Waiting for threshold service...");
+                    return;
+                }
+
+                thershold_request->threshold = ts_value;
+
+                auto result_future = threshold_client_->async_send_request(
+                    thershold_request,
+                    [this](rclcpp::Client<robot_custom_msgs::srv::Threshold>::SharedFuture future)
+                    {
+                        auto response = future.get();
+                        new_threshold = response->ts;
+                        RCLCPP_INFO(this->get_logger(), "Updated Threshold from service: ts=%.2f", new_threshold);
+                    }
+                );
+                RCLCPP_WARN(this->get_logger(), "Request sent, waiting for user input...");
+
+            }
 
             void reverse_state_callback(const std_msgs::msg::Bool::SharedPtr msg){
                 is_reversing = msg->data;
