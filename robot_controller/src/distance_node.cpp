@@ -17,6 +17,7 @@ class DistanceController: public rclcpp::Node{
             //PUBLISHERS
             robot_vel_pub= this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
             reverse_state_pub_ = this->create_publisher<std_msgs::msg::Bool>("/is_reversing", 10);
+            custom_msg_pub_ = this->create_publisher<robot_custom_msgs::msg::ObstacleInfo>("/obstacle_info", 10);
 
             //SUBSCRIBERS
             intermediate_vel_sub_ = this->create_subscription<geometry_msgs::msg::Twist>("/intermediate_vel", 10, std::bind(&DistanceController::intermediate_vel_callback, this, _1));
@@ -125,6 +126,7 @@ class DistanceController: public rclcpp::Node{
         //PUBLISHER
         rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr robot_vel_pub;
         rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr reverse_state_pub_;
+        rclcpp::Publisher<robot_custom_msgs::msg::ObstacleInfo>::SharedPtr custom_msg_pub_;
 
         //SUBSCRIBERS
         rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr intermediate_vel_sub_;

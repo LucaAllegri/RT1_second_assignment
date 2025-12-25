@@ -16,9 +16,10 @@ class InputController : public rclcpp::Node{
 
             //PUBLISHERS
             intermediate_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/intermediate_vel", 10);
-            
+
             //SUBSCRIBERS
             reverse_state_sub_ = this->create_subscription<std_msgs::msg::Bool>("/is_reversing", 10, std::bind(&InputController::reverse_state_callback, this, _1));
+            custom_msg_sub_ = this->create_subscription<robot_custom_msgs::msg::ObstacleInfo>("/obstacle_info", 10, std::bind(&InputController::obstacle_info_callback, this, _1));
 
             //SERVICES
             threshold_client_ = this->create_client<robot_custom_msgs::srv::Threshold>("/set_threshold");
@@ -33,6 +34,10 @@ class InputController : public rclcpp::Node{
         }
         
         private:
+
+            void obstacle_info_callback(const robot_custom_msgs::msg::ObstacleInfo::SharedPtr msg){
+                
+            }
 
             void set_threshold(float ts_value){
                 auto thershold_request = std::make_shared<robot_custom_msgs::srv::Threshold::Request>();
@@ -49,8 +54,7 @@ class InputController : public rclcpp::Node{
                     [this](rclcpp::Client<robot_custom_msgs::srv::Threshold>::SharedFuture future)
                     {
                         auto response = future.get();
-                        new_threshold = response->ts;
-                        RCLCPP_INFO(this->get_logger(), "Updated Threshold from service: ts=%.2f", new_threshold);
+                        RCLCPP_INFO(this->get_logger(), "Updated Threshold from service: ts=%.2f",response->ts);
                     }
                 );
                 RCLCPP_WARN(this->get_logger(), "Request sent, waiting for user input...");
@@ -89,17 +93,9 @@ class InputController : public rclcpp::Node{
                     return;
                 }
 
-                std::cout << "Insert threshold: ";
-                if (!(std::cin >> new_threshold)) {
-                    std::cout << "Invalid input for Threshold.\n";
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    return;
-                }
-                set_threshold(new_threshold);
-
-
+                double new_threshold;
                 double linear, angular;
+
                 std::cout<< "Insert Velocity of the Robot\n";
 
                 std::cout<< "Linear Velocity:";
@@ -117,6 +113,15 @@ class InputController : public rclcpp::Node{
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     return;
                 }
+
+                std::cout << "Insert threshold: ";
+                if (!(std::cin >> new_threshold)) {
+                    std::cout << "Invalid input for Threshold.\n";
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    return;
+                }
+                set_threshold(new_threshold);
 
                 vel_input.linear.x = linear;
                 vel_input.angular.z = angular;
@@ -142,6 +147,7 @@ class InputController : public rclcpp::Node{
 
             //SUBSCRIBERS
             rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr reverse_state_sub_;
+            rclcpp::Subscription<robot_custom_msgs::msg::ObstacleInfo>::SharedPtr custom_msg_sub_;
 
             //SERVICES
             rclcpp::Client<robot_custom_msgs::srv::Threshold>::SharedPtr threshold_client_;
@@ -150,7 +156,6 @@ class InputController : public rclcpp::Node{
             //VARIABLES
             geometry_msgs::msg::Twist vel_input;
             geometry_msgs::msg::Twist stop_vel;
-            float new_threshold;
             bool is_reversing;
             bool is_moving;
             
