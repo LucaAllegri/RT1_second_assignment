@@ -12,7 +12,7 @@ class RobotServiceNode : public rclcpp::Node{
         RobotServiceNode() : Node("robot_service_node"){
 
             //PARAMETER
-            param_client_ =std::make_shared<rclcpp::SyncParametersClient>(this, "/distance_node");
+            param_client_ = std::make_shared<rclcpp::AsyncParametersClient>(this, "/distance_node");
 
             //SERVICE
             thershold_service_ = this->create_service<robot_custom_msgs::srv::Threshold>("/set_threshold",std::bind(&RobotServiceNode::handle_threshold_service, this, std::placeholders::_1, std::placeholders::_2));
@@ -21,21 +21,22 @@ class RobotServiceNode : public rclcpp::Node{
         }
 
     private:
-        void handle_threshold_service( const std::shared_ptr<robot_custom_msgs::srv::Threshold::Request> request, std::shared_ptr<robot_custom_msgs::srv::Threshold::Response> response){
-            if (!param_client_->wait_for_service(1s)) {
-                RCLCPP_ERROR(this->get_logger(), "Distance node not available");
-                return;
-            }
+        void handle_threshold_service(const std::shared_ptr<robot_custom_msgs::srv::Threshold::Request> request, 
+            std::shared_ptr<robot_custom_msgs::srv::Threshold::Response> response) 
+        {
+            RCLCPP_INFO(this->get_logger(), "Ricevuta richiesta servizio: %.2f", request->threshold);
+
             param_client_->set_parameters({rclcpp::Parameter("threshold", request->threshold)});
+
             response->ts = request->threshold;
-            RCLCPP_INFO(this->get_logger(), "Threshold set to %.2f", request->threshold);
+            RCLCPP_INFO(this->get_logger(), "Risposta inviata all'interfaccia");
         }
 
         //SERVICE
         rclcpp::Service<robot_custom_msgs::srv::Threshold>::SharedPtr thershold_service_;
         
         //PARAMETER
-        std::shared_ptr<rclcpp::SyncParametersClient> param_client_;
+        std::shared_ptr<rclcpp::AsyncParametersClient> param_client_; //chiamata asincrona
 
 };
 
