@@ -21,23 +21,23 @@ class InterfaceNode : public rclcpp::Node {
     private:
 
         void request_avg_velocity(){
-            while  (!avg_vel_client_->wait_for_service(std::chrono::milliseconds(200)))
-            {
-                RCLCPP_WARN(this->get_logger(), "Waiting for avg_vel service...");
+            if (!avg_vel_client_->wait_for_service(std::chrono::milliseconds(100))){
+                RCLCPP_WARN(this->get_logger(), "Average velocity service not available");
+                return;
             }
 
             auto request = std::make_shared<robot_custom_msgs::srv::AverageVelocity::Request>();
 
-            auto future = avg_vel_client_->async_send_request(request);
+            avg_vel_client_->async_send_request(
+                request,
+                std::bind(&InterfaceNode::avg_vel_response_callback, this, _1)
+            );
+        }
 
-            if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), future,std::chrono::milliseconds(500)) ==rclcpp::FutureReturnCode::SUCCESS){
-                auto response = future.get();
-                avg_vel.avg_linear_x = response->avg_linear_x;
-                avg_vel.avg_angular_z = response->avg_angular_z;
-            }
-            else{
-                RCLCPP_WARN(this->get_logger(), "Failed to get average velocity");
-            }
+        void avg_vel_response_callback(rclcpp::Client<robot_custom_msgs::srv::AverageVelocity>::SharedFuture future){
+            auto response = future.get();
+            avg_vel.avg_linear_x = response->avg_linear_x;
+            avg_vel.avg_angular_z = response->avg_angular_z;
         }
  
 
