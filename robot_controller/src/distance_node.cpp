@@ -85,8 +85,22 @@ class DistanceController: public rclcpp::Node{
                 float scan_distance = msg->ranges[i];
                 if (!std::isnan(scan_distance) && !std::isinf(scan_distance)){
                     min_dist = std::min(min_dist,scan_distance);
+                    direction_index=i;
                 }   
             }
+
+            float angle = msg->angle_min + direction_index * msg->angle_increment;
+
+            if (angle >= -M_PI/4 && angle <= M_PI/4){
+                dircetion_obstacle = "front";
+            }else if (angle > M_PI/4 && angle <= 3*M_PI/4){
+                dircetion_obstacle = "left";
+            }else if (angle < -M_PI/4 && angle >= -3*M_PI/4){
+                dircetion_obstacle = "right";
+            }else{
+                dircetion_obstacle = "behind";
+            }
+
 
             msg_obst_info.min_distance_obstacle = min_dist;
             msg_obst_info.direction = dircetion_obstacle;
@@ -155,6 +169,7 @@ class DistanceController: public rclcpp::Node{
         double threshold;
         int scan_ranges;
         float min_dist;
+        int direction_index;
         
 };
 

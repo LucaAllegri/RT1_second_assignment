@@ -2,7 +2,7 @@
 #include <memory>
 #include <random>
 #include "rclcpp/rclcpp.hpp"
-#include "robot_custom_msgs/srv/threshold.hpp" 
+#include "robot_custom_msgs/srv/threshold.hpp"
 
 //using Threshold = robot_custom_msgs::srv::Threshold;
 using namespace std::chrono_literals;
@@ -15,8 +15,7 @@ class RobotServiceNode : public rclcpp::Node{
             param_client_ = std::make_shared<rclcpp::AsyncParametersClient>(this, "/distance_node");
 
             //SERVICE
-            thershold_service_ = this->create_service<robot_custom_msgs::srv::Threshold>("/set_threshold",std::bind(&RobotServiceNode::handle_threshold_service, this, std::placeholders::_1, std::placeholders::_2));
-
+            threshold_service_ = this->create_service<robot_custom_msgs::srv::Threshold>("/set_threshold",std::bind(&RobotServiceNode::handle_threshold_service, this, std::placeholders::_1, std::placeholders::_2));
             RCLCPP_INFO(this->get_logger(), "Threshold service ready.");
         }
 
@@ -33,8 +32,8 @@ class RobotServiceNode : public rclcpp::Node{
         }
 
         //SERVICE
-        rclcpp::Service<robot_custom_msgs::srv::Threshold>::SharedPtr thershold_service_;
-        
+        rclcpp::Service<robot_custom_msgs::srv::Threshold>::SharedPtr threshold_service_;
+
         //PARAMETER
         std::shared_ptr<rclcpp::AsyncParametersClient> param_client_; //chiamata asincrona
 
