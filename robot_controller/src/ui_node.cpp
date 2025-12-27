@@ -7,7 +7,6 @@
 #include <limits>
 #include <array>
 using std::placeholders::_1;
-using std::placeholders::_1;
 
 class InputController : public rclcpp::Node{ 
     public:
@@ -17,13 +16,12 @@ class InputController : public rclcpp::Node{
 
             //PUBLISHERS
             intermediate_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/intermediate_vel", 10);
-            avg_vel_pub_ = this->create_publisher<robot_custom_msgs::srv::AverageVelocity::Response>("/avg_vel", 10);
-            
+
             //SUBSCRIBERS
             reverse_state_sub_ = this->create_subscription<std_msgs::msg::Bool>("/is_reversing", 10, std::bind(&InputController::reverse_state_callback, this, _1));
 
             //SERVICES
-            avg_vel_service_ = this->create_service<robot_custom_msgs::srv::AverageVelocity>("/average_vel",std::bind(&RobotServiceNode::handle_avg_vel_service, this, std::placeholders::_1, std::placeholders::_2));
+            avg_vel_service_ = this->create_service<robot_custom_msgs::srv::AverageVelocity>("/average_vel",std::bind(&InputController::handle_avg_vel_service, this, std::placeholders::_1, std::placeholders::_2));
             threshold_client_ = this->create_client<robot_custom_msgs::srv::Threshold>("/set_threshold");
 
             //VARIABLES
@@ -40,17 +38,23 @@ class InputController : public rclcpp::Node{
 
     private:
 
-        void handle_average_vel_service (const std::shared_ptr<robot_custom_msgs::srv::Threshold::Request> request, 
-            std::shared_ptr<robot_custom_msgs::srv::Threshold::Response> response) 
+        void handle_avg_vel_service (const std::shared_ptr<robot_custom_msgs::srv::AverageVelocity::Request>, 
+            std::shared_ptr<robot_custom_msgs::srv::AverageVelocity::Response> response) 
         {
-            if(count < 4){
+            if(count < 5){
                 response->avg_linear_x = 0.0;
                 response->avg_angular_z = 0.0;
-                avg_vel_pub_->publish(response);
+                return;
             }else{
+                for(int i=0; i<5; i++){
+                    avg_vel_linear_x = avg_vel_linear_x + last_vel[i].linear_x;
+                    avg_vel_angular_z = avg_vel_angular_z + last_vel[i].angular_z;
+                }
+                avg_vel_linear_x = avg_vel_linear_x/5;
+                avg_vel_angular_z = avg_vel_angular_z/5;
+
                 response->avg_linear_x = avg_vel_linear_x;
-                response->avg_angular_z = avg_vel_linear_x;
-                avg_vel_pub_->publish(response);
+                response->avg_angular_z = avg_vel_angular_z;
             }
         }
 
@@ -113,7 +117,7 @@ class InputController : public rclcpp::Node{
                 return;
             }
 
-            if(count<4){
+            if(count<5){
                 last_vel[count].linear_x = abs(linear);
                 last_vel[count].angular_z = abs(angular);
             }else{
@@ -144,15 +148,6 @@ class InputController : public rclcpp::Node{
                 std::chrono::seconds(3),
                 std::bind(&InputController::stop_robot, this)
             );
-
-            if(count == 4){
-                for(int i=0; i<5; i++){
-                    avg_vel_linear_x = avg_vel_linear_x + last_vel[i].linear_x;
-                    avg_vel_angular_z = avg_vel_angular_z + last_vel[i].angular_z;
-                }
-                avg_vel_linear_x = avg_vel_linear_x/5;
-                avg_vel_angular_z = avg_vel_angular_z/5;
-            }
             
         }
 
