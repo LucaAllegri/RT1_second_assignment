@@ -32,7 +32,7 @@ def generate_launch_description():
         executable='distance',
         name='distance_node',
         output='screen', 
-        #prefix='xterm -e',
+        prefix='xterm -e',
         parameters=[{
             'threshold': 0.8
         }]
@@ -52,7 +52,7 @@ def generate_launch_description():
         executable='interface',
         name='interface_node',
         output='screen',
-        #prefix='xterm -e',
+        prefix='xterm -e',
     )
 
     return LaunchDescription([

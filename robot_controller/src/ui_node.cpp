@@ -92,100 +92,121 @@ class InputController : public rclcpp::Node{
 
             double linear, angular, new_threshold;
             char direction;
+            bool valid_direction = false;
+            bool valid_threshold = false;
 
-            std::cout << "\n=== ROBOT CONTROL ===" << std::endl;
-            std::cout << "\n=====================" << std::endl;
-            std::cout << "\n=== w     e     r ===" << std::endl;
-            std::cout << "\n=== s           f ===" << std::endl;
-            std::cout << "\n=== x     c     v ===" << std::endl;
-            std::cout << "\n=====================" << std::endl;
+            std::cout << "\n============= ROBOT CONTROL =============";
+            std::cout << "\n=========================================";
+            std::cout << "\n========== w     e     r     t ==========";
+            std::cout << "\n========== s           f       ==========";
+            std::cout << "\n========== x     c     v       ==========";
+            std::cout << "\n=========================================";
+            std::cout << "\n=== Change direction: w/e/r/s/f/x/c/v ===";
+            std::cout << "\n=== Change threshold: t               ===" << std::endl << std::endl;
 
+            while(!valid_direction){
+                std::cout<< "Insert Command : ";
+                if (!(std::cin >> direction)) {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
 
-            std::cout<< "Insert Direction:";
-            if (!(std::cin >> direction)) {
-                std::cout << "Invalid input for Linear Velocity.\n";
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                return;
+                switch (direction){
+                    case 'w':
+                        linear = 1.0;
+                        angular = 1.0;
+                        valid_direction = true;
+                        break;
+
+                    case 'e':
+                        linear = 1.0;
+                        angular = 0.0 ;
+                        valid_direction = true;
+                        break;
+
+                    case 'r':
+                        linear = 1.0;
+                        angular = -1.0;
+                        valid_direction = true;
+                        break;
+                    
+                    case 'f':
+                        linear = 0.0;
+                        angular = -1.0;
+                        valid_direction = true;
+                        break;
+
+                    case 'v':
+                        linear = -1.0;
+                        angular = 1.0;
+                        valid_direction = true;
+                        break;
+
+                    case 'c':
+                        linear = -1.0;
+                        angular = 0.0;
+                        valid_direction = true;
+                        break;
+
+                    case 'x':
+                        linear = -1.0;
+                        angular = -1.0;
+                        valid_direction = true;
+                        break;
+
+                    case 's':
+                        linear = 0.0;
+                        angular = 1.0;
+                        valid_direction = true;
+                        break;
+
+                    case 't':
+                        while(!valid_threshold){
+                            std::cout << "Insert threshold: ";
+                            if (!(std::cin >> new_threshold)) {
+                                std::cout << "Invalid Threshold input for Threshold.\n";
+                                std::cin.clear();
+                                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                            }else{
+                                valid_threshold = true;
+                                valid_direction = true;
+                            }
+                        }
+                        
+                        break;
+                    
+                    default:
+                        std::cout << "Invalid Command! Try again.\n";
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                }
             }
 
-
-            switch (direction){
-                case 'w':
-                    linear = 1.0;
-                    angular = 1.0;
-                    break;
-
-                case 'e':
-                    linear = 1.0;
-                    angular = 0.0 ;
-                    break;
-
-                case 'r':
-                    linear = 1.0;
-                    angular = -1.0;
-                    break;
-                
-                case 'f':
-                    linear = 0.0;
-                    angular = -1.0;
-                    break;
-
-                case 'v':
-                    linear = -1.0;
-                    angular = 1.0;
-                    break;
-
-                case 'c':
-                    linear = -1.0;
-                    angular = 0.0;
-                    break;
-
-                case 'x':
-                    linear = -1.0;
-                    angular = -1.0;
-                    break;
-
-                case 's':
-                    linear = 0.0;
-                    angular = 1.0;
-                    break;
-                
-                default:
-                    break;
-            }
-
-            std::cout << "Insert threshold: ";
-            if (!(std::cin >> new_threshold)) {
-                std::cout << "Invalid input for Threshold.\n";
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                return;
-            }
-
-            if(count<5){
-                last_vel[count].linear_x = abs(linear);
-                last_vel[count].angular_z = abs(angular);
-            }else{
-                for(int i=0; i<5; i++){
-                    if(i==0){
-                        continue;
-                    }else{
-                        last_vel[i-1] = last_vel[i];
+            if(direction != 't'){
+                if(count<5){
+                    last_vel[count].linear_x = abs(linear);
+                    last_vel[count].angular_z = abs(angular);
+                }else{
+                    for(int i=0; i<5; i++){
+                        if(i!=4){
+                            last_vel[i] = last_vel[i+1];
+                        }else{
+                            last_vel[i].linear_x = abs(linear);
+                            last_vel[i].angular_z = abs(angular);
+                        }
                     }
                 }
-                last_vel[4].linear_x = abs(linear);
-                last_vel[4].angular_z = abs(angular);
+                count+=1;
+
+                vel_input.linear.x = linear;
+                vel_input.angular.z = angular;
+                intermediate_vel_pub_->publish(vel_input);
+
+            }else{
+                auto threshold_request = std::make_shared<robot_custom_msgs::srv::Threshold::Request>();
+                threshold_request->threshold = new_threshold + 0.2;   // +0.2 perchè dall'urdf il sensore è al centro del robot, che è lungo 40cm
+                threshold_client_->async_send_request(threshold_request);
             }
-            count+=1;
-
-            auto threshold_request = std::make_shared<robot_custom_msgs::srv::Threshold::Request>();
-            threshold_request->threshold = new_threshold;
-            threshold_client_->async_send_request(threshold_request);
-
-            vel_input.linear.x = linear;
-            vel_input.angular.z = angular;
-            intermediate_vel_pub_->publish(vel_input);
 
             is_moving=true;
             input_timer_.reset();
