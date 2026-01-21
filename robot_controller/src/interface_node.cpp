@@ -1,5 +1,6 @@
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/twist.hpp"
+#include "std_msgs/msg/bool.hpp"
 #include "robot_custom_msgs/msg/obstacle_info.hpp"
 #include "robot_custom_msgs/srv/average_velocity.hpp"
 
@@ -11,14 +12,27 @@ class InterfaceNode : public rclcpp::Node {
 
             //SUBSCRIBERS
             obst_sub_ = this->create_subscription<robot_custom_msgs::msg::ObstacleInfo>("/obstacle_info", 10, std::bind(&InterfaceNode::obstacle_callback, this, _1));
-            ui_sub_ = this->create_subscription<geometry_msgs::msg::Twist>("/intermediate_vel", 10, std::bind(&InterfaceNode::ui_callback, this, _1));
+            robot_moving_state_sub_ = this->create_subscription<std_msgs::msg::Bool>("/robot_moving", 10, std::bind(&InterfaceNode::robot_moving_callback, this, _1));
 
             //SERVICE
             avg_vel_client_ = this->create_client<robot_custom_msgs::srv::AverageVelocity>("/average_vel");
 
+            //VARIABLES
+            is_moving= false;
+
         }
 
     private:
+
+        void robot_moving_callback(const std_msgs::msg::Bool::SharedPtr msg) {
+            // Transizione true → false = fine movimento
+            if (!msg->data) {
+                request_avg_velocity();
+                print_summary();
+            }
+            is_moving = msg->data;
+        }
+
 
         void request_avg_velocity(){
             if (!avg_vel_client_->wait_for_service(std::chrono::milliseconds(100))){
@@ -47,9 +61,7 @@ class InterfaceNode : public rclcpp::Node {
             last_obst_info_.threshold = msg->threshold;
         }
 
-        void ui_callback(const geometry_msgs::msg::Twist::SharedPtr msg) {
-            request_avg_velocity();
-
+        void print_summary() {
             // STAMPA UNICA DATI
             std::cout << "\n--------------------------------------------" << std::endl;
             std::cout << "   RIEPILOGO STATO ROBOT    " << std::endl;
@@ -65,7 +77,7 @@ class InterfaceNode : public rclcpp::Node {
 
         //SUBSCRIBERS
         rclcpp::Subscription<robot_custom_msgs::msg::ObstacleInfo>::SharedPtr obst_sub_;
-        rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr ui_sub_;
+        rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr robot_moving_state_sub_;
         
         //SERVICE
         rclcpp::Client<robot_custom_msgs::srv::AverageVelocity>::SharedPtr avg_vel_client_;
@@ -73,6 +85,7 @@ class InterfaceNode : public rclcpp::Node {
         //VARIABLES
         robot_custom_msgs::srv::AverageVelocity::Response avg_vel;
         robot_custom_msgs::msg::ObstacleInfo last_obst_info_;
+        bool is_moving;
 };
 
 int main(int argc, char **argv) {

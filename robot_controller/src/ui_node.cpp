@@ -16,6 +16,7 @@ class InputController : public rclcpp::Node{
 
             //PUBLISHERS
             intermediate_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/intermediate_vel", 10);
+            robot_moving_state_pub_ = this->create_publisher<std_msgs::msg::Bool>("/robot_moving", 10);
 
             //SUBSCRIBERS
             reverse_state_sub_ = this->create_subscription<std_msgs::msg::Bool>("/is_reversing", 10, std::bind(&InputController::reverse_state_callback, this, _1));
@@ -30,7 +31,7 @@ class InputController : public rclcpp::Node{
             vel_input.linear.x = 0.0;
             vel_input.angular.z = 0.0;
             is_reversing=false;
-            is_moving = false;
+            is_moving.data = false;
             count = 0;
             avg_vel_linear_x = 0.0;
             avg_vel_angular_z = 0.0;
@@ -69,7 +70,11 @@ class InputController : public rclcpp::Node{
 
         void stop_robot() {
             intermediate_vel_pub_->publish(stop_vel);
-            is_moving = false;
+            is_moving.data = false;
+            if(!is_reversing){
+                robot_moving_state_pub_->publish(is_moving);
+            }
+            
             stop_timer_->reset();
             this->start();
         }
@@ -83,7 +88,7 @@ class InputController : public rclcpp::Node{
         }
 
         void input_timer_callback() {
-            if(is_moving){
+            if(is_moving.data){
                 return;        
             }
             if(is_reversing){        //block if coming back
@@ -204,11 +209,15 @@ class InputController : public rclcpp::Node{
 
             }else{
                 auto threshold_request = std::make_shared<robot_custom_msgs::srv::Threshold::Request>();
-                threshold_request->threshold = new_threshold + 0.2;   // +0.2 perchè dall'urdf il sensore è al centro del robot, che è lungo 40cm
+                if(new_threshold < 0.4){
+                    new_threshold = 0.4;     // 0.4 perchè dall'urdf il sensore è al centro del robot, che è lungo 40cm. Gli ho lasciato un pò di margine
+                }
+                threshold_request->threshold = new_threshold;  
                 threshold_client_->async_send_request(threshold_request);
             }
 
-            is_moving=true;
+            is_moving.data=true;
+            robot_moving_state_pub_->publish(is_moving);
             input_timer_.reset();
 
             stop_timer_ = this->create_wall_timer(
@@ -224,6 +233,7 @@ class InputController : public rclcpp::Node{
 
         //PUBLISHER
         rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr intermediate_vel_pub_;
+        rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr robot_moving_state_pub_;
         rclcpp::Publisher<robot_custom_msgs::srv::AverageVelocity::Response>::SharedPtr avg_vel_pub_;
         
         //SUBSCRIBERS
@@ -237,7 +247,7 @@ class InputController : public rclcpp::Node{
         geometry_msgs::msg::Twist vel_input;
         geometry_msgs::msg::Twist stop_vel;
         bool is_reversing;
-        bool is_moving;
+        std_msgs::msg::Bool is_moving;
         double avg_vel_linear_x;
         double avg_vel_angular_z;
         int count;

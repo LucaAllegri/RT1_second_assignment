@@ -18,6 +18,7 @@ class DistanceController: public rclcpp::Node{
             robot_vel_pub= this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
             reverse_state_pub_ = this->create_publisher<std_msgs::msg::Bool>("/is_reversing", 10);
             custom_msg_pub_ = this->create_publisher<robot_custom_msgs::msg::ObstacleInfo>("/obstacle_info", 10);
+            robot_moving_state_pub_ = this->create_publisher<std_msgs::msg::Bool>("/robot_moving", 10);
 
             //SUBSCRIBERS
             intermediate_vel_sub_ = this->create_subscription<geometry_msgs::msg::Twist>("/intermediate_vel", 10, std::bind(&DistanceController::intermediate_vel_callback, this, _1));
@@ -79,14 +80,19 @@ class DistanceController: public rclcpp::Node{
      
             scan_ranges = msg->ranges.size();
             min_dist = msg->range_max;
+            direction_index= -1;
 
             for(int i=0; i<scan_ranges ; i++){
                 
                 float scan_distance = msg->ranges[i];
-                if (!std::isnan(scan_distance) && !std::isinf(scan_distance)){
-                    min_dist = std::min(min_dist,scan_distance);
-                    direction_index=i;
-                }   
+                if (std::isnan(scan_distance) || std::isinf(scan_distance)) {
+                    continue;
+                }
+
+                if (scan_distance < min_dist) {
+                    min_dist = scan_distance;
+                    direction_index = i;
+                }
             }
 
             float angle = msg->angle_min + direction_index * msg->angle_increment;
@@ -107,7 +113,9 @@ class DistanceController: public rclcpp::Node{
             msg_obst_info.threshold = threshold;
             custom_msg_pub_->publish(msg_obst_info);
 
-            RCLCPP_INFO(this->get_logger(),"Min. Distance: %.2f", min_dist);
+            RCLCPP_INFO(this->get_logger(),
+                "Min dist: %.2f | Angle: %.2f rad | Direction: %s",
+                min_dist, angle, dircetion_obstacle.c_str());
 
             if(robot_in_danger()){
                 if(!is_reversing.data){
@@ -122,6 +130,7 @@ class DistanceController: public rclcpp::Node{
                 if(is_reversing.data){
                     is_reversing.data = false;
                     robot_vel_pub->publish(stop_robot);
+                    robot_moving_state_pub_->publish(is_reversing);
                     reverse_state_pub_->publish(is_reversing);
                 }
             }
@@ -147,6 +156,7 @@ class DistanceController: public rclcpp::Node{
         rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr robot_vel_pub;
         rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr reverse_state_pub_;
         rclcpp::Publisher<robot_custom_msgs::msg::ObstacleInfo>::SharedPtr custom_msg_pub_;
+        rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr robot_moving_state_pub_;
 
         //SUBSCRIBERS
         rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr intermediate_vel_sub_;
