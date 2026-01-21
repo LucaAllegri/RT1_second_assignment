@@ -91,22 +91,68 @@ class InputController : public rclcpp::Node{
             }
 
             double linear, angular, new_threshold;
+            char direction;
 
-            std::cout << "\n=== COMANDO ROBOT ===" << std::endl;
-            std::cout<< "Linear Velocity:";
-            if (!(std::cin >> linear)) {
+            std::cout << "\n=== ROBOT CONTROL ===" << std::endl;
+            std::cout << "\n=====================" << std::endl;
+            std::cout << "\n=== w     e     r ===" << std::endl;
+            std::cout << "\n=== s           f ===" << std::endl;
+            std::cout << "\n=== x     c     v ===" << std::endl;
+            std::cout << "\n=====================" << std::endl;
+
+
+            std::cout<< "Insert Direction:";
+            if (!(std::cin >> direction)) {
                 std::cout << "Invalid input for Linear Velocity.\n";
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 return;
             }
-            
-            std::cout << "Angular Velocity:";
-            if(!(std::cin >> angular)) {
-                std::cout << "Invalid input for Angular Velocity.\n";
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                return;
+
+
+            switch (direction){
+                case 'w':
+                    linear = 1.0;
+                    angular = 1.0;
+                    break;
+
+                case 'e':
+                    linear = 1.0;
+                    angular = 0.0 ;
+                    break;
+
+                case 'r':
+                    linear = 1.0;
+                    angular = -1.0;
+                    break;
+                
+                case 'f':
+                    linear = 0.0;
+                    angular = -1.0;
+                    break;
+
+                case 'v':
+                    linear = -1.0;
+                    angular = 1.0;
+                    break;
+
+                case 'c':
+                    linear = -1.0;
+                    angular = 0.0;
+                    break;
+
+                case 'x':
+                    linear = -1.0;
+                    angular = -1.0;
+                    break;
+
+                case 's':
+                    linear = 0.0;
+                    angular = 1.0;
+                    break;
+                
+                default:
+                    break;
             }
 
             std::cout << "Insert threshold: ";
