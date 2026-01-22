@@ -24,6 +24,7 @@ class InterfaceNode : public rclcpp::Node {
 
     private:
 
+        // CHECK IF ROBOT IS MOVING, IF NOT: REQUESTE THE AVG VELOCITY AND PUBLISH THE SUMMARY
         void robot_moving_callback(const std_msgs::msg::Bool::SharedPtr msg) {
             // Transizione true → false = fine movimento
             if (!msg->data) {
@@ -33,7 +34,7 @@ class InterfaceNode : public rclcpp::Node {
             is_moving = msg->data;
         }
 
-
+        // REQUESTE THE AVG VELOCITY
         void request_avg_velocity(){
             if (!avg_vel_client_->wait_for_service(std::chrono::milliseconds(100))){
                 RCLCPP_WARN(this->get_logger(), "Average velocity service not available");
@@ -61,17 +62,18 @@ class InterfaceNode : public rclcpp::Node {
             last_obst_info_.threshold = msg->threshold;
         }
 
+        // DATA'S ROBOT SUMMARY
         void print_summary() {
             // STAMPA UNICA DATI
             std::cout << "\n--------------------------------------------" << std::endl;
-            std::cout << "   RIEPILOGO STATO ROBOT    " << std::endl;
+            std::cout << "               ROBOT STATUS SUMMARY    " << std::endl;
             std::cout << "--------------------------------------------" << std::endl;
-            std::cout << "Distanza Ostacolo più vicino: " << last_obst_info_.min_distance_obstacle << " m" << std::endl;
-            std::cout << "Direzione Ostacolo: " << last_obst_info_.direction << std::endl;
-            std::cout << "Soglia di Sicurezza: " << last_obst_info_.threshold << std::endl;
-            std::cout << "Media ultime 5 velocità: "<< std::endl;
-            std::cout << "        linear velocity= "<< avg_vel.avg_linear_x  << std::endl;
-            std::cout << "       angular velocity= "<< avg_vel.avg_angular_z  << std::endl;
+            std::cout << "Closest obstacle distance: " << last_obst_info_.min_distance_obstacle << " m" << std::endl;
+            std::cout << "Closest obstacle direction: " << last_obst_info_.direction << std::endl;
+            std::cout << "Safety threshold: " << last_obst_info_.threshold << std::endl;
+            std::cout << "Average of last 5 velocities: "<< std::endl;
+            std::cout << "            linear velocity = "<< avg_vel.avg_linear_x  << std::endl;
+            std::cout << "           angular velocity = "<< avg_vel.avg_angular_z  << std::endl;
             std::cout << "--------------------------------------------\n" << std::endl;
         }
 

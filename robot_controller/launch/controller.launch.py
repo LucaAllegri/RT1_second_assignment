@@ -38,14 +38,6 @@ def generate_launch_description():
         }]
     )
 
-    #CUSTOM MSGS NODE
-    custom_service_node = Node(
-        package='robot_controller',
-        executable='robot_service',
-        name='robot_service_node',
-        output='screen',
-    )
-
     #INTERFACE NODE
     interface_node = Node(
         package='robot_controller',
@@ -59,6 +51,5 @@ def generate_launch_description():
         gazebo_launch,
         input_controller_node,
         distance_controller_node,
-        custom_service_node,
         interface_node,
     ])

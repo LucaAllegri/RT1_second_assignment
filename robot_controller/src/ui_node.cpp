@@ -26,19 +26,20 @@ class InputController : public rclcpp::Node{
             threshold_client_ = this->create_client<robot_custom_msgs::srv::Threshold>("/set_threshold");
 
             //VARIABLES
-            stop_vel.linear.x = 0.0;
-            stop_vel.angular.z = 0.0;
-            vel_input.linear.x = 0.0;
             vel_input.angular.z = 0.0;
-            is_reversing=false;
-            is_moving.data = false;
-            count = 0;
-            avg_vel_linear_x = 0.0;
+            vel_input.linear.x = 0.0;
+            stop_vel.angular.z = 0.0;
+            stop_vel.linear.x = 0.0;
             avg_vel_angular_z = 0.0;
+            avg_vel_linear_x = 0.0;
+            is_moving.data = false;
+            is_reversing=false;
+            count = 0;
         }
 
     private:
 
+        // COMPUTE AVERAGE VELOCITY AND UPDATE VALUES
         void handle_avg_vel_service (const std::shared_ptr<robot_custom_msgs::srv::AverageVelocity::Request>, 
             std::shared_ptr<robot_custom_msgs::srv::AverageVelocity::Response> response) 
         {
@@ -59,6 +60,7 @@ class InputController : public rclcpp::Node{
             }
         }
 
+        // CHECK IF THE ROBOT IS IN REVERSE MODE
         void reverse_state_callback(const std_msgs::msg::Bool::SharedPtr msg){
             is_reversing = msg->data;
             if(is_reversing){
@@ -68,12 +70,16 @@ class InputController : public rclcpp::Node{
             }
         }
 
+        // STOP ROBOT AFTER 5 SEC
         void stop_robot() {
+            if (is_reversing) {
+                is_moving.data = true;
+                robot_moving_state_pub_->publish(is_moving);
+                return;
+            }
             intermediate_vel_pub_->publish(stop_vel);
             is_moving.data = false;
-            if(!is_reversing){
-                robot_moving_state_pub_->publish(is_moving);
-            }
+            robot_moving_state_pub_->publish(is_moving);
             
             stop_timer_->reset();
             this->start();
@@ -102,12 +108,12 @@ class InputController : public rclcpp::Node{
 
             std::cout << "\n============= ROBOT CONTROL =============";
             std::cout << "\n=========================================";
-            std::cout << "\n========== w     e     r     t ==========";
-            std::cout << "\n========== s           f       ==========";
-            std::cout << "\n========== x     c     v       ==========";
+            std::cout << "\n        w \\      e |      / r      t    ";
+            std::cout << "\n        s <-             -> f            ";
+            std::cout << "\n        x /      c |      \\ v           ";
             std::cout << "\n=========================================";
             std::cout << "\n=== Change direction: w/e/r/s/f/x/c/v ===";
-            std::cout << "\n=== Change threshold: t               ===" << std::endl << std::endl;
+            std::cout << "\n=== Change threshold (min 0.4): t     ===" << std::endl << std::endl;
 
             while(!valid_direction){
                 std::cout<< "Insert Command : ";
@@ -210,7 +216,10 @@ class InputController : public rclcpp::Node{
             }else{
                 auto threshold_request = std::make_shared<robot_custom_msgs::srv::Threshold::Request>();
                 if(new_threshold < 0.4){
-                    new_threshold = 0.4;     // 0.4 perchè dall'urdf il sensore è al centro del robot, che è lungo 40cm. Gli ho lasciato un pò di margine
+                    std::cout << "Threshold insered too low, it imposted to the minumum: 0.4\n";
+                    new_threshold = 0.4;   /* 0.4 perchè dall'urdf il sensore è al centro del robot, che è lungo 40cm. Gli ho lasciato un pò di margine
+                                              Quindi il sensore dista 0.2 dalla coda e dalla testa del robot.
+                                              Gli ho lasciato un pò di margine, di 0.2 */
                 }
                 threshold_request->threshold = new_threshold;  
                 threshold_client_->async_send_request(threshold_request);
@@ -228,36 +237,38 @@ class InputController : public rclcpp::Node{
         }
 
         //TIMER
+        rclcpp::TimerBase::SharedPtr publish_state_timer_;
         rclcpp::TimerBase::SharedPtr input_timer_;
         rclcpp::TimerBase::SharedPtr stop_timer_;
 
         //PUBLISHER
+        rclcpp::Publisher<robot_custom_msgs::srv::AverageVelocity::Response>::SharedPtr avg_vel_pub_;
         rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr intermediate_vel_pub_;
         rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr robot_moving_state_pub_;
-        rclcpp::Publisher<robot_custom_msgs::srv::AverageVelocity::Response>::SharedPtr avg_vel_pub_;
         
         //SUBSCRIBERS
         rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr reverse_state_sub_;
 
         //SERVICE
-        rclcpp::Client<robot_custom_msgs::srv::Threshold>::SharedPtr threshold_client_;
         rclcpp::Service<robot_custom_msgs::srv::AverageVelocity>::SharedPtr avg_vel_service_;
+        rclcpp::Client<robot_custom_msgs::srv::Threshold>::SharedPtr threshold_client_;
+        
 
         //VARIABLES
         geometry_msgs::msg::Twist vel_input;
         geometry_msgs::msg::Twist stop_vel;
-        bool is_reversing;
         std_msgs::msg::Bool is_moving;
-        double avg_vel_linear_x;
         double avg_vel_angular_z;
+        double avg_vel_linear_x;
+        bool is_reversing;
         int count;
 
-        struct Vel{
+        struct Vel{            
             double linear_x;
             double angular_z;
         };
 
-        std::array<Vel, 5> last_vel;
+        std::array<Vel, 5> last_vel;  //WHERE I STORE THE LAST 5 VELOCITIES
 };
 
 int main(int argc, char * argv[]){

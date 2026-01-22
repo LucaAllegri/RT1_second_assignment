@@ -7,6 +7,7 @@
 #include "robot_custom_msgs/srv/threshold.hpp"
 #include <math.h>
 using std::placeholders::_1;
+using std::placeholders::_2;
 
 class DistanceController: public rclcpp::Node{
     public:
@@ -15,25 +16,28 @@ class DistanceController: public rclcpp::Node{
             //TIMERS
 
             //PUBLISHERS
-            robot_vel_pub= this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
-            reverse_state_pub_ = this->create_publisher<std_msgs::msg::Bool>("/is_reversing", 10);
             custom_msg_pub_ = this->create_publisher<robot_custom_msgs::msg::ObstacleInfo>("/obstacle_info", 10);
-            robot_moving_state_pub_ = this->create_publisher<std_msgs::msg::Bool>("/robot_moving", 10);
-
+            reverse_state_pub_ = this->create_publisher<std_msgs::msg::Bool>("/is_reversing", 10);
+            robot_vel_pub= this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
+            
             //SUBSCRIBERS
             intermediate_vel_sub_ = this->create_subscription<geometry_msgs::msg::Twist>("/intermediate_vel", 10, std::bind(&DistanceController::intermediate_vel_callback, this, _1));
             robot_pose_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>("/goal_pose", 10, std::bind(&DistanceController::robot_pose_callback, this, _1));
             scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>("/scan", 10, std::bind(&DistanceController::scan_callback, this, _1));
             
+            //SERVICES
+            threshold_service_ = this->create_service<robot_custom_msgs::srv::Threshold>("/set_threshold",std::bind(&DistanceController::handle_threshold_service, this, _1, _2));
+
+
             //PARAMETER
             this->declare_parameter<double>("threshold", 0.8);
             threshold = this->get_parameter("threshold").as_double();
             RCLCPP_INFO(this->get_logger(),"Initial threshold: %.2f", threshold);
 
             //VARIABLES
-            min_dist=10.0;
-            is_reversing.data = false;
             dircetion_obstacle = "right";
+            is_reversing.data = false;
+            min_dist=10.0;
 
             //CALLBACK PER UPDATE PARAMETRO 
             param_callback_handle_ = this->add_on_set_parameters_callback( std::bind(&DistanceController::on_param_change,this, std::placeholders::_1));
@@ -41,6 +45,19 @@ class DistanceController: public rclcpp::Node{
 
     private:
 
+        // THRESHOLD SERVICE
+        void handle_threshold_service(const std::shared_ptr<robot_custom_msgs::srv::Threshold::Request> request, 
+            std::shared_ptr<robot_custom_msgs::srv::Threshold::Response> response) 
+        {
+            RCLCPP_INFO(this->get_logger(), "Ricevuta richiesta servizio: %.2f", request->threshold);
+
+            this->set_parameters({rclcpp::Parameter("threshold", request->threshold)});
+
+            response->ts = request->threshold;
+            RCLCPP_INFO(this->get_logger(), "Risposta inviata all'interfaccia");
+        }
+
+        // CHECK IF THE ROBOT IS TOO NEAR AN OBSTACLE
         bool robot_in_danger(){
             if (min_dist > threshold){
                 return false;
@@ -49,7 +66,7 @@ class DistanceController: public rclcpp::Node{
             }
         }
 
-        // CALLBACK PARAMETRI
+        // SET NEW THRESHOLD PARAMETER
         rcl_interfaces::msg::SetParametersResult on_param_change(const std::vector<rclcpp::Parameter> & params) {
             for (const auto & param : params) {
                 if (param.get_name() == "threshold") {
@@ -63,6 +80,7 @@ class DistanceController: public rclcpp::Node{
             return result;
         }
 
+        // CHECK ROBOT MOVING DIRECTION TO REVERSE IT FOR THE REVERSE-PHASE
         geometry_msgs::msg::Twist check_direction_robot(){
             geometry_msgs::msg::Twist reverse_robot_vel;
             if(vel_input.linear.x < 0){
@@ -76,6 +94,7 @@ class DistanceController: public rclcpp::Node{
             return reverse_robot_vel;
         }
 
+        // CHECK WITH LASER SCAN THE DISTANCES WRT THE OBJECTS
         void scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg){
      
             scan_ranges = msg->ranges.size();
@@ -130,17 +149,18 @@ class DistanceController: public rclcpp::Node{
                 if(is_reversing.data){
                     is_reversing.data = false;
                     robot_vel_pub->publish(stop_robot);
-                    robot_moving_state_pub_->publish(is_reversing);
                     reverse_state_pub_->publish(is_reversing);
                 }
             }
         }
 
+        // UPDATING ROBOT POSE
         void robot_pose_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg){
             current_robot_pose.pose.position.x = msg->pose.position.x;
             current_robot_pose.pose.position.y = msg->pose.position.y;
         }
 
+        // PUBLUSHING NEW VELOCITY
         void intermediate_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg){
             vel_input.linear.x = msg->linear.x;
             vel_input.angular.z = msg->angular.z;
@@ -153,10 +173,10 @@ class DistanceController: public rclcpp::Node{
         rclcpp::TimerBase::SharedPtr threshold_timer_;
 
         //PUBLISHER
+        rclcpp::Publisher<robot_custom_msgs::msg::ObstacleInfo>::SharedPtr custom_msg_pub_;
         rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr robot_vel_pub;
         rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr reverse_state_pub_;
-        rclcpp::Publisher<robot_custom_msgs::msg::ObstacleInfo>::SharedPtr custom_msg_pub_;
-        rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr robot_moving_state_pub_;
+        
 
         //SUBSCRIBERS
         rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr intermediate_vel_sub_;
@@ -165,6 +185,10 @@ class DistanceController: public rclcpp::Node{
         
         //SERVICES
         rclcpp::Client<robot_custom_msgs::srv::Threshold>::SharedPtr threshold_client_;
+
+        // SERVICE
+        rclcpp::Service<robot_custom_msgs::srv::Threshold>::SharedPtr threshold_service_;
+
 
         //PARAMETER
         rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_callback_handle_;
@@ -176,10 +200,10 @@ class DistanceController: public rclcpp::Node{
         geometry_msgs::msg::Twist vel_input;
         std_msgs::msg::Bool is_reversing;
         std::string dircetion_obstacle;
+        int direction_index;
         double threshold;
         int scan_ranges;
         float min_dist;
-        int direction_index;
         
 };
 
