@@ -6,13 +6,13 @@
 
 using std::placeholders::_1;
 
-class InterfaceNode : public rclcpp::Node {
+class StatusNode : public rclcpp::Node {
     public:
-        InterfaceNode() : Node("interface_node") {
+        StatusNode() : Node("status_node") {
 
             //SUBSCRIBERS
-            obst_sub_ = this->create_subscription<robot_custom_msgs::msg::ObstacleInfo>("/obstacle_info", 10, std::bind(&InterfaceNode::obstacle_callback, this, _1));
-            robot_moving_state_sub_ = this->create_subscription<std_msgs::msg::Bool>("/robot_moving", 10, std::bind(&InterfaceNode::robot_moving_callback, this, _1));
+            obst_sub_ = this->create_subscription<robot_custom_msgs::msg::ObstacleInfo>("/obstacle_info", 10, std::bind(&StatusNode::obstacle_callback, this, _1));
+            robot_moving_state_sub_ = this->create_subscription<std_msgs::msg::Bool>("/robot_moving", 10, std::bind(&StatusNode::robot_moving_callback, this, _1));
 
             //SERVICE
             avg_vel_client_ = this->create_client<robot_custom_msgs::srv::AverageVelocity>("/average_vel");
@@ -45,7 +45,7 @@ class InterfaceNode : public rclcpp::Node {
 
             avg_vel_client_->async_send_request(
                 request,
-                std::bind(&InterfaceNode::avg_vel_response_callback, this, _1)
+                std::bind(&StatusNode::avg_vel_response_callback, this, _1)
             );
         }
 
@@ -92,7 +92,7 @@ class InterfaceNode : public rclcpp::Node {
 
 int main(int argc, char **argv) {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<InterfaceNode>());
+    rclcpp::spin(std::make_shared<StatusNode>());
     rclcpp::shutdown();
     return 0;
 }

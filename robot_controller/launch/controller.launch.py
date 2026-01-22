@@ -23,7 +23,7 @@ def generate_launch_description():
         executable='ui',
         name='ui_node',
         output='screen',
-        prefix='xterm -e'
+        prefix='xterm -title "USER INTERFACE" -e'
     )
     
     #DISTANCE NODE
@@ -32,24 +32,24 @@ def generate_launch_description():
         executable='distance',
         name='distance_node',
         output='screen', 
-        prefix='xterm -e',
+        prefix='xterm -title "LOG" -e',
         parameters=[{
             'threshold': 0.8
         }]
     )
 
-    #INTERFACE NODE
-    interface_node = Node(
+    #STATUS NODE
+    status_node = Node(
         package='robot_controller',
-        executable='interface',
-        name='interface_node',
+        executable='status',
+        name='status_node',
         output='screen',
-        prefix='xterm -e',
+        prefix='xterm -title "ROBOT STATUS" -e',
     )
 
     return LaunchDescription([
         gazebo_launch,
         input_controller_node,
         distance_controller_node,
-        interface_node,
+        status_node,
     ])

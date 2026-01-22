@@ -19,17 +19,17 @@ find_package(robot_custom_msgs REQUIRED)
 
 add_executable(ui src/ui_node.cpp)  
 add_executable(distance src/distance_node.cpp) 
-add_executable(interface src/interface_node.cpp) 
+add_executable(status src/status_node.cpp) 
 
 ament_target_dependencies(ui rclcpp geometry_msgs std_msgs sensor_msgs robot_custom_msgs)
 ament_target_dependencies(distance rclcpp geometry_msgs std_msgs sensor_msgs robot_custom_msgs)
-ament_target_dependencies(interface rclcpp geometry_msgs robot_custom_msgs)
+ament_target_dependencies(status rclcpp geometry_msgs robot_custom_msgs)
 
 
 install(TARGETS 
   ui
   distance
-  interface
+  status
   DESTINATION lib/${PROJECT_NAME}
 )
 
