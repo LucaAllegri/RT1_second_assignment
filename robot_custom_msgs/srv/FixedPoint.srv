@@ -1,0 +1,4 @@
+int32 fixed_point_x
+int32 fixed_point_y
+---
+bool success

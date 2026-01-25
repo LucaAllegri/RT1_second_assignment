@@ -3,6 +3,7 @@
 #include "std_msgs/msg/bool.hpp"
 #include "robot_custom_msgs/srv/threshold.hpp"
 #include "robot_custom_msgs/srv/average_velocity.hpp"
+#include "robot_custom_msgs/srv/fixed_point.hpp"
 #include <iostream>
 #include <limits>
 #include <array>
@@ -24,6 +25,7 @@ class InputController : public rclcpp::Node{
             //SERVICES
             avg_vel_service_ = this->create_service<robot_custom_msgs::srv::AverageVelocity>("/average_vel",std::bind(&InputController::handle_avg_vel_service, this, std::placeholders::_1, std::placeholders::_2));
             threshold_client_ = this->create_client<robot_custom_msgs::srv::Threshold>("/set_threshold");
+            fixedpoint_client_ = this->create_client<robot_custom_msgs::srv::FixedPoint>("/set_fixed_point");
 
             //VARIABLES
             vel_input.angular.z = 0.0;
@@ -102,15 +104,17 @@ class InputController : public rclcpp::Node{
             }
 
             double linear, angular, new_threshold;
+            int fixed_point_x, fixed_point_y;
             char direction;
             bool valid_direction = false;
             bool valid_threshold = false;
+            bool valid_fixed_point = false;
 
             std::cout << "\n============= ROBOT CONTROL =============";
             std::cout << "\n=========================================";
             std::cout << "\n        w \\      e |      / r      t    ";
             std::cout << "\n        s <-             -> f            ";
-            std::cout << "\n        x /      c |      \\ v           ";
+            std::cout << "\n        x /      c |      \\ v      b    ";
             std::cout << "\n=========================================";
             std::cout << "\n=== Change direction: w/e/r/s/f/x/c/v ===";
             std::cout << "\n=== Change threshold (min 0.4): t     ===" << std::endl << std::endl;
@@ -186,6 +190,28 @@ class InputController : public rclcpp::Node{
                         }
                         
                         break;
+
+                    case 'b':
+                        while(!valid_fixed_point){
+                            std::cout << "Insert fixed point's coordiante x: ";
+                            if (!(std::cin >> fixed_point_x)) {
+                                std::cout << "Invalid input for fixed_point_x.\n";
+                                std::cin.clear();
+                                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                            }else{
+                                std::cout << "Insert fixed point's coordiante y: ";
+                                if (!(std::cin >> fixed_point_y)) {
+                                    std::cout << "Invalid input for fixed_point_y.\n";
+                                    std::cin.clear();
+                                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                                }else{
+                                    valid_fixed_point = true;
+                                    valid_direction   = true;
+                                }
+                            }
+                        }
+                        
+                        break;
                     
                     default:
                         std::cout << "Invalid Command! Try again.\n";
@@ -193,7 +219,7 @@ class InputController : public rclcpp::Node{
                 }
             }
 
-            if(direction != 't'){
+            if(direction != 't' && direction != 'b'){
                 if(count<5){
                     last_vel[count].linear_x = abs(linear);
                     last_vel[count].angular_z = abs(angular);
@@ -213,7 +239,7 @@ class InputController : public rclcpp::Node{
                 vel_input.angular.z = angular;
                 intermediate_vel_pub_->publish(vel_input);
 
-            }else{
+            }else if(direction != 'b'){
                 auto threshold_request = std::make_shared<robot_custom_msgs::srv::Threshold::Request>();
                 if(new_threshold < 0.4){
                     std::cout << "Threshold insered too low, it imposted to the minumum: 0.4\n";
@@ -223,6 +249,12 @@ class InputController : public rclcpp::Node{
                 }
                 threshold_request->threshold = new_threshold;  
                 threshold_client_->async_send_request(threshold_request);
+            }else{
+                auto fixed_point_request = std::make_shared<robot_custom_msgs::srv::FixedPoint::Request>();
+                
+                fixed_point_request->fixed_point_x = fixed_point_x;  
+                fixed_point_request->fixed_point_y = fixed_point_y;
+                fixedpoint_client_->async_send_request(fixed_point_request);
             }
 
             is_moving.data=true;
@@ -252,6 +284,7 @@ class InputController : public rclcpp::Node{
         //SERVICE
         rclcpp::Service<robot_custom_msgs::srv::AverageVelocity>::SharedPtr avg_vel_service_;
         rclcpp::Client<robot_custom_msgs::srv::Threshold>::SharedPtr threshold_client_;
+        rclcpp::Client<robot_custom_msgs::srv::FixedPoint>::SharedPtr fixedpoint_client_;
         
 
         //VARIABLES

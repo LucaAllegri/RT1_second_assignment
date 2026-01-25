@@ -34,7 +34,9 @@ def generate_launch_description():
         output='screen', 
         prefix='xterm -title "LOG" -e',
         parameters=[{
-            'threshold': 0.8
+            'threshold': 0.8,
+            'fixed_point_x': 10,
+            'fixed_point_y': 10
         }]
     )
 
