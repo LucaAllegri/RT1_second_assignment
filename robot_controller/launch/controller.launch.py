@@ -12,7 +12,7 @@ def generate_launch_description():
             os.path.join(
                 get_package_share_directory('bme_gazebo_sensors'),
                 'launch',
-                'spawn_robot.launch.py'
+                'spawn_robot.exam.py'
             )
         )
     )
@@ -24,6 +24,13 @@ def generate_launch_description():
         name='ui_node',
         output='screen',
         prefix='xterm -title "USER INTERFACE" -e'
+    )
+
+    #TURTLE 
+    turtle_node = Node(
+        package='turtlesim_controller',
+        executable='turtlesim_controller',
+        name='turtle_node',
     )
     
     #DISTANCE NODE
@@ -52,4 +59,5 @@ def generate_launch_description():
         input_controller_node,
         distance_controller_node,
         status_node,
+        turtle_node,
     ])
